@@ -1,6 +1,16 @@
 # Research Changelog
 
-This file is the fastest handoff path for a new researcher. Read newest version first, then follow referenced findings.
+This file is the fastest handoff path for a new researcher. **Read `HANDOFF.md` first**, then newest version, then referenced findings.
+
+## v0.1.8 — Recovered-log consolidation + canonical handoff
+- Added `HANDOFF.md` as the canonical successor entry point; prior chat transcripts are no longer required for continuity.
+- Migrated the validated subset of later research that had existed only in prior research logs.
+- Added F010 and promoted C-015: within one RSAENH CGR64 invocation, the second `SystemFunction036` call reuses the same `[ebp-0x18]` local and adds no independent 160-bit stack-prehistory root.
+- Added F011: target-SP3 validated direct VLH pool width is `0x258 = 600B`; recovered pinned analysis narrows the direct pre-QSI allocation-history region to 24B. Explicitly forbids interpreting 24B as 192 bits of entropy without provenance proof.
+- Added F012: class-05 `SystemProcessInformation` contributes a captured `0xDC8 = 3528B` region that is SHA-1 projected to 20B, so that local boundary has image <=2^160. The stronger `0x1b8 written + untouched ~3KB tail` interpretation remains OPEN pending exact XP SP3 `ExpGetProcessInformation` cold-block closure.
+- Added F013: existing 80-byte registry Seed is read by the exact-SP3 path; universal `X0=0` initialization is falsified. Zero state remains only the missing-Seed branch.
+- Updated README, STATUS and CLAIMS to make the branch internally consistent.
+- Main next work: class-05 byte-exact partial-write semantics -> 24B last-writer provenance -> persistent `X0` reachable family -> OpenSSL/BN composition.
 
 ## v0.1.7 — SP3 pool-provenance checkpoint
 - Synchronized the ledger after v0.1.6: F008 and `versions/v0.1.6.md` already existed, while STATUS/CLAIMS/CHANGELOG had remained at v0.1.5.
@@ -27,7 +37,7 @@ This file is the fastest handoff path for a new researcher. Read newest version 
 - Composed the standard first-key seven-SystemFunction call sequence to root ancestry `[M1,M1,M2,M3,M4,M5,M6]`.
 - Therefore M7/M8 are startup-created but not output ancestors of the modeled first-key path.
 - Explicitly prohibited treating M1..M6 as six independent kernel secrets; their joint KSecDD persistent-state ancestry became the primary Windows-side reachability question.
-- D640 within-CGR64 `[ebp-18h]` second-round fresh-root proposition remains OPEN pending exact D681..D693 audit.
+- D640 within-CGR64 `[ebp-18h]` second-round fresh-root proposition remained OPEN here and was promoted in v0.1.8 after recovered exact write-set work.
 
 ## v0.1.4 — Early RSAENH ancestry pruning
 - Added F006: composed fixed pre-init RSAENH state + F005 same-stream reuse through provider initialization and CryptAcquireContext bridge.
@@ -68,4 +78,5 @@ Every future milestone must:
 2. update `STATUS.md`;
 3. update `CLAIMS.md` when a proposition changes status;
 4. create a separate `findings/FNNN-*.md` for any nontrivial machine-level result;
-5. explicitly list which older assumption is invalidated, if any.
+5. explicitly list which older assumption is invalidated, if any;
+6. keep `HANDOFF.md` synchronized whenever the immediate successor proof obligations change.
