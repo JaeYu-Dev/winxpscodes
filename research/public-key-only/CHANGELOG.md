@@ -2,12 +2,19 @@
 
 This file is the fastest handoff path for a new researcher. Read newest version first, then follow referenced findings.
 
-## v0.1.2 — First-use rekey burst correction
-- Corrected the early call-count model: reference source can perform eight zero-byte first-use rekeys inside one initial GenRandom request before returning bytes.
-- Added F003: zero-byte first-use rekey control flow.
-- Added F004: conditional theorem that the first eight user-side KSecDD rekey-input snapshots are functions of one 128-bit `D=MD4(B)` root.
-- First SP3 snapshot `C1=MD4(B)||0^240` already bit-exact confirmed; C2..C8 and API-call nesting remain open.
-- Earlier notes equating one early SystemFunction036 call with one KSecDD rekey must not be reused without revalidation.
+## v0.1.3 — NT threshold mutation + same-stream reuse
+- Directly read V17 raw SP3 trace and all eight 256-byte IOCTL input blobs.
+- Resolved first/second call asymmetry: `g_dwRC4RekeyParam` changes from 512 to 16384 **inside the first NT rekey**.
+- First SystemFunction036: entry1 rekey + immediate 20-byte output.
+- Second SystemFunction036: seven zero-byte first-use rekeys for entries2..0, then returns to entry1 and emits the next 20 bytes from the same RC4 stream.
+- Added F005: first two SystemFunction036 outputs share one cached ADVAPI RC4-key root; intervening KSecDD transitions #2..#8 are not ancestors of the second output.
+- Corrected F004: C1 uses MD4 root D1; C2..C8 repeatedly embed a second digest D2 at 7-byte offsets. Raw blobs confirm the pattern exactly.
+- v0.1.2's claim that all eight rekey inputs share one D is **superseded/falsified**.
+
+## v0.1.2 — Superseded exploratory model
+- Detected that zero-byte first-use rekey passes exist in source semantics.
+- Proposed an eight-rekey-before-first-byte model and one-D C1..C8 family.
+- Raw V17 validation in v0.1.3 showed the first call is exceptional because the global NT rekey threshold mutates mid-call. Preserve this version as an audit trail; do not reuse its one-D/eight-before-first-byte conclusions.
 
 ## v0.1.1 — ADVAPI first-use reductions
 - Added F001: eight rc4_safe structs are not eight hidden initial keys under reference semantics; first use forces rekey.
