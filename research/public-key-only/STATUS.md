@@ -1,58 +1,61 @@
-# STATUS — Public-Key-Only Track
+# STATUS — Reachable Private-Key Image Track
 
-Version: v0.1.4
+Version: v0.1.5
 Date: 2026-08-09
 
 ## One-line status
-No public-key-only break below 2^128 is proven. The early RSAENH provider state is now pruned more aggressively: its pre-init 160-bit state is a fixed self-test constant, and the first two provider RNG consumptions use consecutive segments of one ADVAPI entry1 RC4 stream. Therefore KSecDD rekeys #2..#8, although chronologically interposed, are not ancestors of the RSAENH state after init + acquire bridge.
+No public-key-only break below 2^128 is proven. The project is now framed around the reachable first-private-scalar image `R_C = Image(Phi_C)`. A new SP3 trace/KSA result maps the first four SystemFunction036 outputs to KSecDD-derived ADVAPI RC4 roots `[M1,M1,M2,M3]`; composing the standard seven-call first-key path yields only six consumed KSecDD roots `[M1,M1,M2,M3,M4,M5,M6]`, not eight chronological rekeys.
 
 ## Strongest confirmed reductions
 - OpenSSL 0.9.8h Windows RAND_poll requests 64 bytes from CryptGenRandom.
 - XP SP3 RSAENH serves the relevant request as 40+24 from two 40-byte generator blocks.
 - RSAENH final block `H(state20,aux20)->out40` is bit-exact replayed.
 - One out40 block projects nominal `(state20,aux20)` through an effective 160-bit XVAL, so `|Image(out40)| <= 2^160`.
-- RSAENH state immediately before the provider-initialization transition is the fixed 20-byte AlgorithmCheck/self-test expected vector, not an independent hidden 160-bit root.
+- RSAENH state immediately before provider initialization is the fixed AlgorithmCheck/self-test 20-byte expected vector.
 - V17 first KSecDD rekey input is bit-exact `MD4(L1)||0^240`.
 - V17 C2..C8 are repeated embeddings of one `MD4(L2)` root at successive +7 byte positions.
-- V17 PRGA #1 and #9 use the same ADVAPI entry1 RC4 state and continue indices `0->20->40`, matching SystemFunction036 outputs #1 and #2.
-- Therefore KSecDD rekeys #2..#8 do not influence SystemFunction036 output #2 and do not enter the RSAENH init→bridge state ancestry.
+- V17 PRGA #1 and #9 use the same ADVAPI entry1 state and continue indices `0->20->40`, matching SystemFunction036 outputs #1 and #2.
+- V17 KSA replay maps PRGA #10 to KSecDD/IOCTL #2 and PRGA #11 to #3, matching SystemFunction036 outputs #3 and #4.
+- Therefore early output-root ancestry is `[M1,M1,M2,M3]`.
+- Under the standard first-key seven-SystemFunction call sequence, selector continuation yields `[M1,M1,M2,M3,M4,M5,M6]`; `M7,M8` are created but are not first-key output ancestors on this path.
 
-## Current early-state equation
-Let `M1` be the KSecDD-derived material that keys ADVAPI entry1; `L1,L2` the two SystemFunction036 pre-call in/out buffers; and `B1,B2` the rsaenh caller-buffer prefixes mixed after SystemFunction036. With fixed initial RSAENH state S0:
+## Primary research object
+For fixed implementation/build class `C`:
+
+`d_first = Phi_C(omega)`
+
+`R_C = Image(Phi_C)`.
+
+The goal is to bound/characterize `R_C` and its search structure. Public-key-only recovery is a corollary when candidates from `R_C` can be searched below generic secp256k1 ECDLP (~2^128) using only `Q=dG` as verifier.
+
+## Current Windows-side ancestry model
+The early provider state begins from fixed `S0`.
+
+First two SystemFunction outputs share one cached RC4-key root `M1`:
 
 `R1 = L1 XOR KS(M1)[0:20]`
 
-`R2 = L2 XOR KS(M1)[20:40]`
+`R2 = L2 XOR KS(M1)[20:40]`.
 
-`A1 = R1 XOR B1`
+Later useful outputs advance through already-keyed entries:
 
-`A2 = R2 XOR B2`
+`R3 <- M2`, `R4 <- M3`, and under the modeled first-key sequence `R5 <- M4`, `R6 <- M5`, `R7 <- M6`.
 
-`S2 = T_state(T_state(S0,A1),A2)`.
+Do **not** treat `M1..M6` as six independent secrets. Their joint ancestry passes through the same KSecDD persistent-state ratchet and may collapse further.
 
-Hence `S2 = F(M1,L1,L2,B1,B2)` and contains no dependency on KSecDD rekey roots M2..M8.
-
-## Structured prehistory evidence
-V17 raw SystemFunction036 pre-call buffers are highly structured rather than random-looking:
-
-L1 = `98 19 03 68 00 00 00 00 00 00 00 68 00 ae 25 00 00 00 00 00`
-
-L2 = `10 00 00 00 00 00 00 00 70 4b 25 00 40 fb 23 00 08 00 00 00`
-
-L2 parses as 32-bit words `0x10, 0, 0x00254b70, 0x0023fb40, 0x8`. This is promising stale-frame structure, but no support bound is claimed until exact writers are recovered.
-
-## Public-key-only blockers
-1. KSecDD material M1 still depends on persistent kernel state/pool data.
-2. Exact first-writer provenance of L1,L2 and rsaenh prefixes B1,B2 remains open.
-3. Later cached ADVAPI entries actually consumed before the first Bitcoin key still introduce KSecDD roots that must be mapped by data-flow ancestry, not chronology.
-4. OpenSSL's remaining RAND_poll inputs must ultimately be composed into the first-private-scalar bound.
+## Current blockers
+1. Joint reachable image/provenance of KSecDD-derived roots `M1..M6`.
+2. Exact first-writer/last-writer provenance of RSAENH/SystemFunction036 pre-call locals `L_t` and caller-prefixes `B_t`.
+3. Exact D640 `D681..D693` audit for within-CGR64 second-round local reuse.
+4. Full composition of both OpenSSL RAND_poll executions and remaining Win32 sources into the pre-key OpenSSL state.
+5. First BN_rand_range draw/rejection-path image.
 
 ## Immediate next actions
-P0. Recover exact previous writers of all bytes in L1 and L2; test whether their support is determined by fixed DLL addresses, stack-frame geometry, heap pointers, small counters, or genuinely irreducible data.
-P1. Recover B1/B2 rsaenh caller-prefix provenance for init and acquire-bridge transitions.
-P2. Map SystemFunction036 outputs #3 onward to actual cached ADVAPI entries and only retain KSecDD rekeys that feed the first-key dependency graph.
-P3. Bound M1 by tracing only the first KSecDD rekey's persistent-state and pool ancestry.
-P4. Push confirmed reductions through both OpenSSL RAND_poll executions and the first BN_rand_range draw.
+P0. Treat `M1..M6` as outputs of one KSecDD state machine and derive a joint-image bound; never multiply six nominal key widths.
+P1. Close `D681..D693`: prove or falsify that the second RSAENH CGR64 round adds zero fresh stack-prehistory freedom.
+P2. Recover byte-level last writers for V17 `L1/L2` and the RSAENH caller prefixes mixed into aux20.
+P3. Compose the resulting Windows output image into OpenSSL RAND_poll state transitions.
+P4. Evaluate `log2 |R_C|` or a stronger structured-search bound at the first private scalar.
 
 ## Break criterion
 Call it a Public-Key-Only break only when the first private scalar is restricted to an enumerable/structured search provably below generic secp256k1 ECDLP (~2^128), validated on synthetic or researcher-owned keys only.
