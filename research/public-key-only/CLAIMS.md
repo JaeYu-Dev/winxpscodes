@@ -28,7 +28,11 @@ Statuses: `CONFIRMED`, `FALSIFIED`, `OPEN`, `SOURCE-ONLY`, `SUPERSEDED`.
 | C-022 | V17 C2..C8 differ by the same 16B D2=MD4(B2) embedded at successive +7 byte positions | CONFIRMED RAW BLOBS | seven caller-side rekey inputs share one 128-bit root |
 | C-023 | First two observed SystemFunction036 outputs use consecutive 20B segments of the same entry1 RC4 stream | CONFIRMED SP3 TRACE | removes one independent KSecDD/ADVAPI output root |
 | C-024 | KSecDD rekeys #2..#8 occurring between outputs #1 and #2 influence output #2 | FALSIFIED | they key other cached entries; R2 returns to entry1 |
-| C-025 | Provenance of SystemFunction036 pre-call buffers B1/B2 collapses below two independent 160-bit roots | OPEN | next high-value PK-only target |
+| C-025 | Provenance of SystemFunction036 pre-call buffers L1/L2 collapses below two independent 160-bit roots | OPEN | next high-value PK-only target |
+| C-026 | RSAENH state immediately before provider initialization is the fixed AlgorithmCheck/self-test expected 20-byte vector | CONFIRMED MACHINE/TRACE | removes an entire hidden 160-bit provider root |
+| C-027 | RSAENH state after provider init + acquire bridge has no ancestry from KSecDD rekey roots M2..M8 | CONFIRMED BY COMPOSITION | seven chronologically interposed kernel transitions vanish from early-state support accounting |
+| C-028 | Early provider state can be written as `S2=F(M1,L1,L2,B1,B2)` for fixed shipped constants | CONFIRMED BY COMPOSITION | isolates the exact remaining roots before runtime CGR |
+| C-029 | V17 L1/L2 values are structured stale-frame data with a provably small support | OPEN | raw structure is observed, but last-writer/support theorem is not yet proved |
 
 ## Rule
 No target-SP3 claim moves to CONFIRMED from source inspection alone unless independently anchored by exact binary/trace/replay evidence. Correlation is only promoted when it removes an actual data-flow ancestor or produces a formal search/image reduction. A local <=2^128 projection is not by itself a Bitcoin private-key break unless the downstream joint search is also below generic ECDLP.
