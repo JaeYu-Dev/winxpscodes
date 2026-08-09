@@ -1,9 +1,21 @@
-# Public-Key-Only Early Bitcoin / Windows XP RNG Research
+# Early Bitcoin / Windows XP Private-Key Reachability Research
 
-## Objective
-Determine whether the exact shipped 2009-era Windows Bitcoin key-generation stack admits a **public-key-only computational collapse**: given only the public key and fixed implementation/build facts, does the implementation restrict the private scalar to a candidate space or structured search with cost below generic secp256k1 ECDLP (~2^128 group operations)?
+## Primary objective
+Characterize the **reachable private-key image** of the exact shipped historical key-generation stack.
 
-## Non-negotiable invariant
+For a fixed implementation/build class `C`, let `omega` denote all hidden execution state admitted by that class and define:
+
+`d_first = Phi_C(omega)`.
+
+The main research object is:
+
+`R_C = Image(Phi_C)`.
+
+We seek rigorous upper bounds and structure for `R_C`, plus the computational cost of enumerating/searching it. We do **not** estimate security by summing nominal buffer widths, entropy-credit counters, or chronological RNG events.
+
+## Public-key-only corollary / attack model
+Public-key-only recovery is the final success condition, not the primary object of study. Given only `Q=dG` and fixed public implementation/build facts, if the implementation restricts `d` to an efficiently searchable set/structure below generic secp256k1 ECDLP (~2^128 group operations), then `Q` acts only as a verifier for candidates generated from the reachable image.
+
 No private runtime state, registry dump, process memory, boot-time guess, PID guess, VM-image assumption, or wallet-side secret may be supplied to the predictor. Environmental observations may be used only to formulate/falsify hypotheses, not as attack inputs.
 
 ## Evidence ladder
@@ -15,7 +27,7 @@ No private runtime state, registry dump, process memory, boot-time guess, PID gu
 6. BOUND — image/support/search-complexity theorem.
 7. PKO-PoC — synthetic/owned key recovery using public key only.
 
-A claim may only move upward; a higher layer can falsify a lower-layer hypothesis.
+A higher evidence layer may falsify a lower-layer hypothesis.
 
 ## Current target stack
 - Bitcoin 0.1.x / historical Windows build
@@ -24,11 +36,17 @@ A claim may only move upward; a higher layer can falsify a lower-layer hypothesi
 - ADVAPI32 `SystemFunction036` / `RtlGenRandom`
 - KSecDD / randlib / persistent RNG state
 
-## Current strongest positive result
-The shipped RSAENH FIPS-186-style 40-byte generator is machine-algebraically lower-dimensional than its nominal `(state20, aux20)` 320-bit input: the observed block is determined through a 160-bit `XVAL` combination, hence `|Image(OUT40)| <= 2^160`. This is a real dimensional collapse but **not yet a public-key-only break** because 2^160 enumeration is worse than the ~2^128 generic ECDLP baseline.
+## Current strongest reductions
+- RSAENH pre-initialization provider state is a fixed self-test constant, not an independent 160-bit root.
+- One RSAENH 40-byte block has `|Image(OUT40)| <= 2^160` through its machine-level XVAL projection.
+- The first two observed SystemFunction036 outputs are consecutive segments of the same cached ADVAPI entry1 RC4 stream.
+- V17 KSA replay maps the next useful outputs to KSecDD rekey roots M2 and M3.
+- Under the standard first-key seven-call sequence, the Windows output ancestry is `[M1,M1,M2,M3,M4,M5,M6]`: six KSecDD rekey roots, not eight chronological rekeys.
+
+These are real dependency/image reductions but **not yet a key-recovery break**. The joint reachable set of `M1..M6` and the OpenSSL state composition remain open.
 
 ## Current bottleneck
-Reduce the effective hidden state of the `SystemFunction036 -> ADVAPI rc4_safe -> KSecDD persistent-state` chain, and then compose that bound through OpenSSL to the first Bitcoin private scalar.
+Determine the smallest effective historical root that generates KSecDD-derived rekey materials `M1..M6`, then compose only the roots that actually survive the machine dependency graph through RSAENH, both OpenSSL RAND_poll executions, and the first BN_rand_range draw.
 
 ## Repository map
 - `STATUS.md` — one-page handoff state
