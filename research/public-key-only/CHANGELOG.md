@@ -2,6 +2,13 @@
 
 This file is the fastest handoff path for a new researcher. Read newest version first, then follow referenced findings.
 
+## v0.1.4 — Early RSAENH ancestry pruning
+- Added F006: composed fixed pre-init RSAENH state + F005 same-stream reuse through provider initialization and CryptAcquireContext bridge.
+- Formal early-state dependency is now `S2 = F(M1,L1,L2,B1,B2)` for fixed shipped constants.
+- KSecDD rekey roots M2..M8 are proven absent from the data-flow ancestry of S2 even though their rekeys occur chronologically between the first two useful SystemFunction036 outputs.
+- Promoted the fixed post-AlgorithmCheck RSAENH state into the active PK-only model rather than counting it as a hidden 160-bit root.
+- Next target is exact last-writer provenance of L1/L2 and rsaenh caller-prefixes B1/B2. V17 raw values are strongly structured but are not yet assigned a support bound.
+
 ## v0.1.3 — NT threshold mutation + same-stream reuse
 - Directly read V17 raw SP3 trace and all eight 256-byte IOCTL input blobs.
 - Resolved first/second call asymmetry: `g_dwRC4RekeyParam` changes from 512 to 16384 **inside the first NT rekey**.
