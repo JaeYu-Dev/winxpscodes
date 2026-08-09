@@ -1,47 +1,55 @@
-# F003 — First-use rekey passes can return zero bytes
-Status: SOURCE-CONFIRMED / TARGET-SP3-CALL-BOUNDARY-OPEN
-PK-only effect: major call-count/state-chain correction if preserved in shipped SP3.
+# F003 — NT rekey-threshold mutation creates asymmetric first-use behavior
+Status: CONFIRMED IN REFERENCE SOURCE + SP3 TRACE
+PK-only effect: explains first-call/second-call asymmetry and invalidates the simple one-rekey-per-call model.
 
-## Exact source control flow
-For user-mode randlib, `RandomFillBuffer(pbBuffer, &len)` performs:
+## Correction history
+The original F003 draft predicted eight zero-byte first-use rekeys before the first returned byte. V17 raw SP3 trace falsifies that for the first `SystemFunction036` call. The reason is a subtle **mid-call mutation of the global rekey threshold**, already explainable from the reference source.
 
-1. `UpdateCircularHash(..., pbBuffer, len)`.
-2. `rc4_safe_select(..., &KeyId, &RC4BytesUsed)`.
-3. If `RC4BytesUsed >= g_dwRC4RekeyParam`:
-   - set local `RC4BytesUsed = g_dwRC4RekeyParam`;
-   - obtain rekey material with `GatherRandomKey()`;
-   - `rc4_safe_key()` selected entry (which internally resets the entry's stored `BytesUsed` to 0).
-4. Compute `dwMaxPossibleBytes = g_dwRC4RekeyParam - RC4BytesUsed` using the **local** variable.
-5. Truncate `*pdwLength` to that maximum.
-6. `rc4_safe(..., *pdwLength, pbBuffer)`.
+## Source mechanism
+User-mode randlib starts with:
 
-On a first-use entry, startup set stored `BytesUsed=0xffffffff`, so the rekey branch runs. The local variable is then explicitly assigned the threshold (512 in user mode), making:
+`g_dwRC4RekeyParam = 512`.
 
-`dwMaxPossibleBytes = 512 - 512 = 0`.
+On NT, `IsRNGWinNT()` later changes the global to:
 
-Therefore that `RandomFillBuffer` pass rekeys the entry but emits **zero bytes**. `GenRandom()` adds zero to `dwFilledBytes` and loops again.
+`g_dwRC4RekeyParam = 16384`.
 
-## Sequential first-use consequence
-The selector source order is `1,2,3,4,5,6,7,0,1,...`. If all eight entries are still first-use, a single initial non-empty `GenRandom()` request can execute:
+In `RandomFillBuffer()`, on a first-use entry:
 
-- pass 1: select 1, rekey, 0 bytes
-- pass 2: select 2, rekey, 0 bytes
-- ...
-- pass 8: select 0, rekey, 0 bytes
-- pass 9: select 1, no rekey, finally emit requested bytes
+1. `rc4_safe_select()` returns stored `BytesUsed=0xffffffff`.
+2. The rekey branch assigns the **local** `RC4BytesUsed = g_dwRC4RekeyParam`.
+3. It then calls `GatherRandomKey()`.
+4. On the process's first NT gather, `GatherRandomKeyFastUserMode()` reaches `IsRNGWinNT()`, which changes the **global** rekey threshold from 512 to 16384.
+5. After rekey, max output is computed as:
 
-Thus the reference-source semantics predict an **eight-rekey initialization burst before the first returned byte**, not necessarily one rekey per API invocation.
+`global g_dwRC4RekeyParam - local RC4BytesUsed`.
 
-## Why this matters
-Earlier research notes modeled the first several `SystemFunction036` calls as each causing one KSecDD rekey. That interpretation must be suspended. If shipped XP SP3 preserves this control flow, the first call itself can initialize all eight ADVAPI RC4 entries, while later calls consume already-keyed streams without KSecDD rekey until their byte thresholds are reached.
+For the first call this becomes:
 
-## Existing SP3 evidence consistent with this model
-Prior V17/V20 campaign notes report that the first eight KSecDD IOCTL outputs initialize the eight ADVAPI RC4 states, after which PRGA reuses initialized states. This is consistent with an initialization burst, but the existing notes do not yet prove all eight IOCTLs are nested inside one `SystemFunction036` invocation.
+`16384 - 512 = 15872`,
 
-## Target-binary proof obligations
-1. In exact XP SP3 ADVAPI32, identify the post-rekey assignment to the local `RC4BytesUsed` value.
-2. Confirm the max-output calculation uses that local threshold value, yielding zero bytes on first-use rekey passes.
-3. Recover call nesting/timestamps from V17 or a controlled trace to show whether eight KSecDD rekeys occur before the first `SystemFunction036` return.
+so a 20-byte request can be emitted immediately after the first rekey.
 
-## Falsifier
-If shipped SP3 sets the post-rekey local value to 0 (or otherwise emits bytes immediately after each rekey), the eight-rekey-per-first-call model is false for the target.
+For later first-use entries, the global is already 16384 before the branch, so local is also set to 16384 and:
+
+`16384 - 16384 = 0`.
+
+Those later first-use passes rekey but emit zero bytes.
+
+## Exact SP3 trace anchors
+V17 first `SystemFunction036` call shows:
+- selected entry has `BytesUsed=0xffffffff`;
+- at the select-return site the global rekey parameter is `0x200`;
+- after the KSecDD IOCTL/rekey, `rc4_safe` is called with `len=0x14` and PRGA emits 20 bytes.
+
+At the second `SystemFunction036` call, the select-return site shows global rekey parameter `0x4000`. The campaign then records PRGA #2..#8 with length zero before a later 20-byte PRGA use.
+
+This precisely matches the threshold-mutation model.
+
+## Consequence
+The historical startup transient is not a stationary round-robin process. The first NT RNG call is special because a global policy parameter changes **inside** the first first-use rekey operation.
+
+Any model that assumes one fixed rekey threshold from process start, or equates one early `SystemFunction036` call with one KSecDD rekey, is invalid.
+
+## PK-only relevance
+The mutation controls which cached RC4 state produces subsequent outputs. In particular it enables the first two observed `SystemFunction036` outputs to consume consecutive segments of the same entry-1 RC4 stream (formalized in F005), eliminating an otherwise expected independent RNG root.
