@@ -2,6 +2,16 @@
 
 This file is the fastest handoff path for a new researcher. Read newest version first, then follow referenced findings.
 
+## v0.1.5 — Reachable-image reframing + six-root first-key ancestry
+- Reframed the primary research object from “Public-Key-Only” to the reachable first-private-scalar image `R_C = Image(Phi_C)`; PK-only recovery is now the final corollary/attack model.
+- Added F007 from V17 raw trace + KSA replay.
+- Exact useful-output root map for first four SystemFunction036 calls: `[M1,M1,M2,M3]`.
+- PRGA #1 and #9 are consecutive segments of the same entry1 stream; PRGA #10 directly KSA-matches IOCTL #2 and PRGA #11 directly KSA-matches IOCTL #3.
+- Composed the standard first-key seven-SystemFunction call sequence to root ancestry `[M1,M1,M2,M3,M4,M5,M6]`.
+- Therefore M7/M8 are startup-created but not output ancestors of the modeled first-key path.
+- Explicitly prohibited treating M1..M6 as six independent kernel secrets; their joint KSecDD persistent-state ancestry is now the primary Windows-side reachability question.
+- D640 within-CGR64 `[ebp-18h]` second-round fresh-root proposition remains OPEN pending exact D681..D693 audit.
+
 ## v0.1.4 — Early RSAENH ancestry pruning
 - Added F006: composed fixed pre-init RSAENH state + F005 same-stream reuse through provider initialization and CryptAcquireContext bridge.
 - Formal early-state dependency is now `S2 = F(M1,L1,L2,B1,B2)` for fixed shipped constants.
