@@ -2,6 +2,23 @@
 
 This file is the fastest handoff path for a new researcher. Read newest version first, then follow referenced findings.
 
+## v0.1.7 — SP3 pool-provenance checkpoint
+- Synchronized the ledger after v0.1.6: F008 and `versions/v0.1.6.md` already existed, while STATUS/CLAIMS/CHANGELOG had remained at v0.1.5.
+- Added F009 as a deliberately OPEN machine-trace candidate.
+- Eight V24 post-gather frame captures contain pointer-like values `e1337008, e1379008, e137f008, e138e008, e12cc008, e134d008, e1379008, e137e008`.
+- Cycle 2 and cycle 7 repeat `0xe1379008` exactly; all eight values end in `0x008`, consistent with but not proving an XP x86 page+8 pool-payload interpretation.
+- Explicitly separated three propositions: repeated address observation = confirmed; identity as KSecDD `pbWorkingBuffer` = open; preserved residual contents / zero fresh freedom = open.
+- Reasserted that only the used 0x258-byte prefix matters for VLH reachability, not the full 0xE00 allocation capacity.
+- Main next proof is shipped-SP3 semantic mapping of the candidate pointer plus byte-level last-writer provenance over `[0,0x258)`.
+
+## v0.1.6 — Persistent KSecDD ratchet eliminates independent-M-root model
+- Added F008 from V24 SP3 long-path trace/replay.
+- Established the state model `X_{t+1}=VLH(X_t,P_t)` and `M_t=C_t XOR KS_{X_{t+1}}[0:256]` for the validated long-path cycles.
+- Full 80-byte `seedbase_after` values are handed across cycle boundaries and reused as RC4 KSA keys; representative boundaries were checked 80/80 bytes exactly.
+- Therefore M1..M6 are not six independent KSecDD roots. Their joint image depends on one starting state `X0`, sequential gather inputs `P1..P6`, and the reduced caller-side startup family.
+- Reframed the Windows-side blocker as the fresh differential dimension/provenance of `P1..P6` plus the reachable image of `X0`.
+- No `<2^128` search bound is claimed from the 80-byte state width.
+
 ## v0.1.5 — Reachable-image reframing + six-root first-key ancestry
 - Reframed the primary research object from “Public-Key-Only” to the reachable first-private-scalar image `R_C = Image(Phi_C)`; PK-only recovery is now the final corollary/attack model.
 - Added F007 from V17 raw trace + KSA replay.
@@ -9,7 +26,7 @@ This file is the fastest handoff path for a new researcher. Read newest version 
 - PRGA #1 and #9 are consecutive segments of the same entry1 stream; PRGA #10 directly KSA-matches IOCTL #2 and PRGA #11 directly KSA-matches IOCTL #3.
 - Composed the standard first-key seven-SystemFunction call sequence to root ancestry `[M1,M1,M2,M3,M4,M5,M6]`.
 - Therefore M7/M8 are startup-created but not output ancestors of the modeled first-key path.
-- Explicitly prohibited treating M1..M6 as six independent kernel secrets; their joint KSecDD persistent-state ancestry is now the primary Windows-side reachability question.
+- Explicitly prohibited treating M1..M6 as six independent kernel secrets; their joint KSecDD persistent-state ancestry became the primary Windows-side reachability question.
 - D640 within-CGR64 `[ebp-18h]` second-round fresh-root proposition remains OPEN pending exact D681..D693 audit.
 
 ## v0.1.4 — Early RSAENH ancestry pruning
