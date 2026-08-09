@@ -1,53 +1,57 @@
 # STATUS — Public-Key-Only Track
 
-Version: v0.1.2
+Version: v0.1.3
 Date: 2026-08-09
 
 ## One-line status
-No public-key-only break below 2^128 is proven. The most important new correction is that reference ADVAPI randlib can perform an **eight-entry KSecDD rekey initialization burst before the first returned RNG byte**, not one rekey per early SystemFunction036 call. Under that control flow, the entire user-side first-eight rekey-input family is determined by one 128-bit `D=MD4(B)` root; the first SP3 snapshot is already bit-exact confirmed, while C2..C8 and exact call nesting remain open.
+No public-key-only break below 2^128 is proven. A new shipped-SP3 startup transient is now trace-grounded: NT detection changes ADVAPI's RC4 rekey threshold from 512 to 16384 during the first rekey, causing the first two observed SystemFunction036 outputs to consume consecutive 20-byte segments of the **same cached entry1 RC4 stream**. This removes one expected independent OS-RNG output root from the early rsaenh provider-state history.
 
-## Closed / strongly anchored facts
+## Strongest confirmed reductions
 - OpenSSL 0.9.8h Windows RAND_poll requests 64 bytes from CryptGenRandom.
-- XP SP3 RSAENH serves the relevant 64-byte request as 40+24 from two 40-byte generator blocks.
-- RSAENH checks SystemFunction036 success; stale-on-failure is falsified.
-- RSAENH final block `H(state20,aux20)->out40` is bit-exact replayed for controlled traces.
-- One out40 block is determined through a 160-bit effective XVAL, so its image is at most 2^160.
-- Reference user-mode rc4_safe has eight entries, selector order `1,2,3,4,5,6,7,0,...`, and all entries start `BytesUsed=0xffffffff`.
-- Reference RandomFillBuffer hashes the caller buffer through MD4 into a 256-byte circular state before rekey/output.
-- V17 SP3 first rekey input is bit-exact `C1=MD4(B)||0^240` for the captured 20-byte pre-call buffer B.
-- Existing V17/V20 notes report first-eight KSecDD outputs initializing the eight ADVAPI RC4 states and later PRGA reuse; this is consistent with the burst model.
+- XP SP3 RSAENH serves the relevant request as 40+24 from two 40-byte generator blocks.
+- RSAENH final block `H(state20,aux20)->out40` is bit-exact replayed.
+- One out40 block projects nominal `(state20,aux20)` through an effective 160-bit XVAL, so `|Image(out40)| <= 2^160`.
+- ADVAPI has eight rc4_safe entries; hidden arbitrary initial RC4 keys are overwritten by first-use KSecDD-derived rekeys.
+- V17 first KSecDD rekey input is bit-exact `MD4(B1)||0^240`.
+- V17 raw C2..C8 blobs are successive XOR additions of one common `D2=MD4(B2)` at offsets 7,14,21,28,35,42,49.
+- Most importantly, V17 PRGA #1 and #9 use the same RC4 state pointer and continue indices `0->20->40`, matching SystemFunction036 outputs #1 and #2 respectively.
 
-## v0.1.2 model correction
-Reference source does:
-1. select a first-use entry (`BytesUsed=0xffffffff`),
-2. rekey it,
-3. set **local** `RC4BytesUsed` to the threshold,
-4. compute max output as threshold minus that local value = 0,
-5. emit zero bytes,
-6. GenRandom loops and selects the next entry.
+## v0.1.3 startup mechanism
+Initial global rekey threshold: 512.
 
-Therefore one initial non-empty GenRandom request can source-semantically execute eight zero-byte rekey passes before a ninth pass emits bytes. Previous notes that implicitly equated an early SystemFunction036 call with one KSecDD rekey are **suspended pending exact SP3 call-boundary validation**.
+First SystemFunction036:
+1. select entry1 with `BytesUsed=0xffffffff`;
+2. local bytes-used captures 512;
+3. KSecDD rekey path reaches NT detection and changes global threshold to 16384;
+4. post-rekey available bytes become `16384-512`, so 20 bytes are emitted from entry1.
 
-## Conditional first-use theorem
-If the first-use burst holds in shipped SP3, the initial circular state is zero, and no concurrent update interleaves, then the unchanged caller buffer B is repeatedly MD4-hashed during the eight zero-byte passes. With `D=MD4(B)` and 7-byte circular increments:
+Second SystemFunction036:
+1. global threshold is already 16384;
+2. entries2..0 each first-use rekey with local=16384, producing seven zero-byte PRGA passes;
+3. loop returns to entry1;
+4. entry1 emits its next 20 bytes, continuing the same stream used by call #1.
 
-`C_j = C_{j-1} XOR Embed_{7(j-1)}(D)`, j=1..8.
+Therefore the seven intervening KSecDD rekeys initialize other entries but are not data-flow ancestors of SystemFunction036 output #2.
 
-Thus `|(C1,...,C8) image| <= 2^128` for the **user-side ADVAPI contribution**. This does not bound the complete RNG output because KSecDD state/pools remain.
+## Corrected circular-input model
+- C1 depends on `D1=MD4(B1)`.
+- C2..C8 depend on repeated embeddings of `D2=MD4(B2)`.
+- Complete C1..C8 caller-side family uses at most two 128-bit digest roots in the V17 trace, not eight independent 256-byte values.
+- The v0.1.2 one-D-for-all-eight hypothesis is superseded.
 
 ## Public-key-only blockers
-1. Exact shipped-SP3 validation of the zero-byte first-use branch and API-call nesting.
-2. V17 C2..C8 rekey-input replay from the single D root.
-3. KSecDD recurrent state `X_j=F(X_{j-1},P_j)` and fresh pool innovations P1..P8 remain potentially large.
-4. The joint image of the SystemFunction036 outputs consumed by RSAENH has not been bounded below 2^128.
-5. OpenSSL's remaining RAND_poll inputs must eventually be composed into the first-private-scalar bound.
+1. KSecDD material M1 that keys entry1 still depends on persistent kernel state/pool data.
+2. SystemFunction036 in/out prehistory buffers B1/B2 (and later buffers) still need exact machine-code provenance bounds.
+3. Later cached ADVAPI entries (entry2, entry3, ...) depend on KSecDD rekeys #2,#3,...; their joint kernel-state ancestry remains potentially large.
+4. Need compose the same-stream R1/R2 relation through rsaenh provider initialization + acquire bridge into the state used by runtime CryptGenRandom.
+5. OpenSSL's other RAND_poll sources remain for final first-private-scalar composition.
 
 ## Immediate next actions
-P0. Recover V17 IOCTL input blobs C2..C8 and call nesting; compare with one-D circular replay.
-P1. Validate exact SP3 ADVAPI assembly for post-rekey local BytesUsed assignment and zero-byte return behavior.
-P2. Rebuild the true KSecDD transition count before first Bitcoin key using actual call boundaries.
-P3. Analyze P1..P8 kernel-pool write provenance for repeated/derived fields, width loss, uninitialized gaps, overwrite-before-use, or machine-level aliasing—without counting mere variation as entropy.
-P4. Compose confirmed reductions through RSAENH XVAL and OpenSSL.
+P0. Compose F005 through rsaenh init and acquire-bridge FIPS transitions; derive provider state after both as a function of one RC4 root M1 plus buffer prehistories.
+P1. Trace first writers of the two SystemFunction036 20-byte input/output locals B1/B2 in exact RSAENH/ADVAPI machine code; test whether either is fixed, reused, or a deterministic function of known stack/global values.
+P2. Map SystemFunction036 outputs #3 onward to cached entry2/entry3 KSecDD roots and exact Bitcoin/OpenSSL call sequence.
+P3. Continue KSecDD pool provenance analysis only for kernel states that actually lie on the first-key dependency graph; discard transitions proven irrelevant by caching.
+P4. Push all confirmed reductions through OpenSSL and evaluate the joint search/image bound against 2^128.
 
 ## Break criterion
 Call it a Public-Key-Only break only when the first private scalar is restricted to an enumerable/structured search provably below generic secp256k1 ECDLP (~2^128), validated on synthetic or researcher-owned keys only.
