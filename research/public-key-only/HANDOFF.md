@@ -1,6 +1,6 @@
 # Canonical Handoff — Early Bitcoin / Windows XP Reachable Private-Key Research
 
-This file is the **single entry point for a successor researcher**. Do not rely on prior chat transcripts. Read this file first, then `STATUS.md`, `CLAIMS.md`, the numbered findings, and finally the version notes.
+This file is the **single entry point for a successor researcher**. Do not rely on prior chat transcripts. Read this file first, then `STATUS.md`, `CLAIMS.md`, `ARTIFACTS.md`, the numbered findings, and finally the version notes.
 
 ## 0. Research objective
 
@@ -43,6 +43,8 @@ For every new finding record:
 4. algebraic reduction,
 5. reachable-image consequence,
 6. falsifier / remaining proof obligation.
+
+`ARTIFACTS.md` is the reproducibility index. Pin exact replay commit/path or binary hash there or in the finding before promoting a new machine-level claim.
 
 ## 2. Current highest-confidence model
 
@@ -145,10 +147,11 @@ Only after P1–P3 are bounded, propagate the surviving variables through exact 
 1. `HANDOFF.md` — this file.
 2. `STATUS.md` — current branch state.
 3. `CLAIMS.md` — claim ledger; this is authoritative for verdicts.
-4. `findings/` — machine-level evidence and reductions.
-5. `versions/` — historical evolution and superseded models.
-6. `CHANGELOG.md` — version transition index.
-7. XP SP1 source only for hypotheses; never as final SP3 proof.
+4. `ARTIFACTS.md` — binary/replay identities, external corpus, reproducibility caveats.
+5. `findings/` — machine-level evidence and reductions.
+6. `versions/` — historical evolution and superseded models.
+7. `CHANGELOG.md` — version transition index.
+8. XP SP1 source only for hypotheses; never as final SP3 proof.
 
 ## 7. Branch policy
 
@@ -158,7 +161,7 @@ The canonical research branch is:
 research/public-key-only
 ```
 
-There is no newer GitHub research branch at the time this handoff was created. Some later results had existed only in prior research logs; the validated subset is being migrated here. Future work must land here immediately so chat history is never required for continuity.
+There is no newer GitHub research branch at the time this handoff was created. Some later results had existed only in prior research logs; the validated subset is now migrated here. Future work must land here immediately so chat history is never required for continuity.
 
 ## 8. Publication / safety boundary
 
