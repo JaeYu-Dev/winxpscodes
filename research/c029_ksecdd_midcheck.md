@@ -1,3 +1,3 @@
 # C-029 / KSecDD mid-check
 
-Placeholder
+Checkpoint initialized on `research/public-key-only`.
